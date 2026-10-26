@@ -12,9 +12,15 @@ jobs:
       - uses: actions/setup-java@v5
         with: { distribution: temurin, java-version: 21 }
       - run: npm ci
-      - run: npx cap sync android
+      - shell: bash
+        run: |
+          set -o pipefail
+          (npx cap sync android) 2>&1 | tee /tmp/log.txt || { grep -iE "error|fail|wrong|exception|could not|cannot" /tmp/log.txt | tail -25 | sed 's/^/::error::/'; tail -15 /tmp/log.txt | sed 's/^/::error::/'; exit 1; }
       - run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
-      - run: cd android && chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+      - shell: bash
+        run: |
+          set -o pipefail
+          (cd android && chmod +x gradlew && ./gradlew assembleDebug --no-daemon) 2>&1 | tee /tmp/log.txt || { grep -iE "error|fail|wrong|exception|could not|cannot" /tmp/log.txt | tail -25 | sed 's/^/::error::/'; tail -15 /tmp/log.txt | sed 's/^/::error::/'; exit 1; }
       - uses: actions/upload-artifact@v4
         with:
           name: wall-war-apk
