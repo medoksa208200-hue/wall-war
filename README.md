@@ -1,18 +1,32 @@
-# حرب السور — APK
+# حرب السور
 
-## أسهل طريقة (من غير ما تنزل حاجة): GitHub
-1. اعمل ريبو جديد على GitHub وارفع محتوى الفولدر ده كله.
-2. ادخل تبويب **Actions** → هتلاقي **Build APK** شغال لوحده (أو دوس Run workflow).
-3. بعد ~5 دقايق افتح الـ run → تحت **Artifacts** نزّل `wall-war-apk` → جواه `app-debug.apk`.
-4. ابعته للموبايل وسطّبه (اسمح بـ "تثبيت من مصادر غير معروفة").
+لعبة 2D لاتنين ورا سورين: استخبى، اتحرك، وطّي أو نام، وفي دورك نشّن واضرب أو ارمي قنبلة.
+١٠ مودات، ٤ مستويات صعوبة، اسكنات، ولعب بالبلوتوث من غير نت.
 
-## من Android Studio
+## تنزيل التطبيق
+https://github.com/medoksa208200-hue/wall-war/releases/download/latest/wall-war.apk
+
+## التحديث التلقائي
+التطبيق بيفتح `www/index.html` (لودر صغير). اللودر بيقرا `www/version.json` من GitHub:
+لو فيه نسخة أحدث بينزّل `www/game.html` ويشغّلها ويحفظها علشان تشتغل من غير نت.
+
+**علشان تنزّل تحديث للعبة لكل الأجهزة:**
+1. عدّل في `src/game.html` وزوّد `const VERSION=`.
+2. `python3 tools/build_web.py --notes "اللي اتغير"`
+3. اعمل commit و push على `main`. الأجهزة هتاخد التحديث أول ما اللعبة تتفتح على نت (خلال ~٥ دقايق من الـ push).
+
+**لو غيرت كود أندرويد (Java / plugins):** زوّد `NATIVE` في `tools/build_web.py` و `versionCode` في `android/app/build.gradle`،
+وابني بـ `--min-native <الرقم الجديد>`. الأجهزة القديمة هيظهرلها زرار تنزّل الـ APK الجديد.
+
+## الكراكترات
+الصور الأصلية في `art/`. لتقطيعها من جديد:
 ```
-npm install
-npx cap sync android
-npx cap open android
+mkdir -p /tmp/wallwar-sprites && cp art/enemy-sheet.png /tmp/wallwar-sprites/enemy.png && cp art/player-sheet.png /tmp/wallwar-sprites/player.png
+python3 tools/sprites_cut.py /tmp/wallwar-sprites/enemy.png /tmp/wallwar-sprites
+python3 tools/sprites_cut.py /tmp/wallwar-sprites/player.png /tmp/wallwar-sprites
+SPR_DIR=/tmp/wallwar-sprites python3 tools/sprites_pack.py   # يطلع sprites.js — حطه مكان سطر SPRITES في src/game.html
 ```
-وبعدين Build → Build APK(s).
+كل شيت لازم يكون صفين × ٨ وضعيات بنفس الترتيب اللي في البرومت، على خلفية خضرا صافية.
 
-## تعديل اللعبة
-اللعبة كلها في `www/index.html`. عدّل فيه وبعدين `npx cap sync android` وابني تاني.
+## البناء
+الـ APK بيتبني تلقائي على GitHub Actions مع كل push، وبيتنشر في Release اسمه `latest`.
