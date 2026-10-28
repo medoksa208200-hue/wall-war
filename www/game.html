@@ -213,7 +213,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 </script>
 <script>
 /* WALLWAR_GAME */
-const VERSION=8;
+const VERSION=9;
 /* =================== world constants =================== */
 const W=960,H=540;
 const EG=262,EPX=60,EX0=150;                 // enemy plane: ground y, px per metre, x origin
@@ -515,13 +515,13 @@ function fx(e){
         if(e.wall){burst(sx,sy,'#9e5b36',10);chunks(sx,sy,'#9e5b36',e.chip?8:3);sfx.wall()}else if(e.iy<0)burst(sx,sy,'#c39561',10);
         say(e.near?'قريبة! بس فلتت':'فلتت','#e9d3b0');
       }
-      const f=g.foes[e.ui];if(f&&e.d>0)f.hitT=.4;if(f&&e.kill){f.deathT=0;f.dieHead=e.d>=2;f.hitT=0}
+      const f=g.foes[e.ui];if(f&&e.d>0){f.hitT=.55;f.hitSide=e.ix<f.x?1:-1}if(f&&e.kill){f.deathT=0;f.dieHead=e.d>=2;f.hitT=0}
     }else{
       sfx.far();const me=g.me,f=g.foes[e.i]||g.foes[0],k=f&&f.boss?1.18:1;
       const gx=ex(f?f.x:5.5),gy=ey(1.45*k);
       flash(gx,gy,.7);if(g.md.night)g.lights.push({x:gx,y:gy,r:150,life:.7,max:.7});
       let hx=mx(e.ix),hy=MWB-e.iy*MWS;
-      if(e.d>0){hy=MG-e.iy*MSC;hx=mx(me.x)+(e.ix-me.x)*MSC*.9;me.hitT=.5;
+      if(e.d>0){hy=MG-e.iy*MSC;hx=mx(me.x)+(e.ix-me.x)*MSC*.9;me.hitT=.55;me.hitSide=e.ix<me.x?1:-1;if(e.r>0)float(mx(me.x),MG-ST[me.st].top*MSC-20,'−'+AR(Math.min(e.d,9)),'#ff6b5a');
         if(e.r<0){say('الدرع صد الطلقة!','#4cc3a6');burst(hx,hy,'#4cc3a6',16)}
         else{sfx.hit();g.red=1;g.shake=.5;if(e.kill){me.deathT=0;me.hitT=0}say(e.kill?'اتقتلت!':(e.d>=2?'اتصبت في راسك! −٢':'اتصبت! −١'),'#e2483a');burst(hx,hy,'#b3221a',26);vib(e.d>=2?[90,50,140]:90)}}
       else{if(e.wall){burst(hx,hy,'#9e5b36',14);chunks(hx,hy,'#9e5b36',e.chip?10:4);sfx.wall()}g.shake=.15;say(e.near?'عدّت جنبك!':'فلتت منه','#e9d3b0')}
@@ -545,8 +545,8 @@ function fx(e){
       if(e.on==='me')g.decals.push({x:bx,y:MG-6,r:rnd(70,95)})});
     g.shake=e.on==='me'?.8:.4;if(e.on==='me')g.red=Math.max(g.red,.6);
     for(const h of e.hits||[]){
-      if(h.who==='me'){if(h.kill)g.me.deathT=0;if(h.r<0)say('الدرع حماك!','#4cc3a6');else{say(h.kill?'اتقتلت!':'اتصبت من القنبلة! −'+AR(h.dm),'#e2483a');g.red=1}}
-      else{const f=g.foes[h.i];if(f&&h.kill){f.deathT=0;f.dieHead=false}const fx0=f?ex(f.x):bx;if(h.r<0)float(fx0,ey(1.6),'درع','#4cc3a6');else{float(fx0,ey(1.7),h.kill?'قتل':'−'+AR(h.dm),'#ff6b5a');if(f)f.hitT=.5}}
+      if(h.who==='me'){if(h.kill)g.me.deathT=0;else if(h.r>0){g.me.hitT=.55;g.me.hitSide=g.me.x<e.x?-1:1;float(mx(g.me.x),MG-ST[g.me.st].top*MSC-20,'−'+AR(h.dm),'#ff6b5a')}if(h.r<0)say('الدرع حماك!','#4cc3a6');else{say(h.kill?'اتقتلت!':'اتصبت من القنبلة! −'+AR(h.dm),'#e2483a');g.red=1}}
+      else{const f=g.foes[h.i];if(f&&h.kill){f.deathT=0;f.dieHead=false}const fx0=f?ex(f.x):bx;if(h.r<0)float(fx0,ey(1.6),'درع','#4cc3a6');else{float(fx0,ey(1.7),h.kill?'قتل':'−'+AR(h.dm),'#ff6b5a');if(f&&!h.kill){f.hitT=.55;f.hitSide=f.x<e.x?-1:1}}}
     }
     if(!(e.hits||[]).length)say(e.on==='me'?'نجيت من القنبلة!':'القنبلة ما جابتش حد','#e9d3b0');
     else if(e.on==='foe'&&e.hits.some(h=>h.r>0))say(e.hits.some(h=>h.kill)?'القنبلة قتلته!':'القنبلة جابته!','#4cc3a6');
@@ -1011,7 +1011,7 @@ function drawSoldier(c,x,gy,s,view,st,o){
 /* ---- sprite artwork (cut from the character sheets) ---- */
 const SUITF=Object.fromEntries(SUITS.map(x=>[x.id,x.f]));
 const ENEMYF=['','hue-rotate(35deg) saturate(.75) brightness(.95)','grayscale(.75) brightness(.9)'];
-const BOSSF='brightness(.6) contrast(1.35) saturate(1.3)',GHOSTF='brightness(0) invert(1) sepia(.35)';
+const HITF='sepia(1) saturate(8) hue-rotate(-50deg) brightness(1.15)',BOSSF='brightness(.6) contrast(1.35) saturate(1.3)',GHOSTF='brightness(0) invert(1) sepia(.35)';
 const SHEETS={};
 const PARTS={};
 function loadSheets(){if(typeof SPRITES==='undefined')return;for(const k of ['enemy','player']){const im=new Image();im.onload=()=>{SHEETS[k]={img:im,f:SPRITES[k].f,ppm:SPRITES[k].ppm,tint:{}};if(!$('shop').hidden)drawPreview()};im.src=SPRITES[k].src}
@@ -1027,8 +1027,8 @@ const WALK=[4,5,6,5];
 function poseIdx(key,view,st,o){
   if(o.dead)return 15;
   if(view==='back'){if(o.throwT>0)return 7;if(o.aim)return 3;if(st===2)return 2;if(st===1)return 1;if(o.mv)return WALK[Math.floor(o.walk*.45)%4];return 0}
-  if(key==='enemy'){if(o.throwT>0)return 7;if(o.aim)return 3;if(o.hitT>0)return st===0?12:11;if(st===2)return 2;if(st===1)return o.mv?8:1;if(o.mv)return WALK[Math.floor(o.walk*.45)%4];return 0}
-  if(o.throwT>0)return 14;if(o.aim)return 11;if(o.hitT>0)return 13;if(st===2)return 10;if(st===1)return o.mv?12:9;return 8;
+  if(key==='enemy'){if(o.throwT>0)return 7;if(o.aim)return 3;if(o.hitT>0&&st<2&&!o.dead)return st===0?12:11;if(st===2)return 2;if(st===1)return o.mv?8:1;if(o.mv)return WALK[Math.floor(o.walk*.45)%4];return 0}
+  if(o.throwT>0)return 14;if(o.aim)return 11;if(o.hitT>0&&st<2)return 13;if(st===2)return 10;if(st===1)return o.mv?12:9;return 8;
 }
 /* aiming geometry for your soldier (back view): pivot at the chest, rifle tip measured on the aiming frame */
 function aimPose(x,gy,s,aimAt){
@@ -1054,7 +1054,7 @@ function drawUnit(c,x,gy,s,view,st,o){
   const sk=o.sheet==='player'&&!o.ghost?o.sk:null;
   const walking=o.mv&&!o.dead&&!o.aim&&!(o.throwT>0)&&!(o.hitT>0);c.imageSmoothingQuality='high';
   let idx=poseIdx(o.sheet,view,st,o);if(walking&&st===0)idx=view==='back'?0:o.sheet==='enemy'?0:8;
-  let fall=0,flash=o.hitT>0?Math.min(.7,o.hitT*1.4):0;
+  let fall=0,flash=o.hitT>0?Math.min(.85,o.hitT*1.8):0;
   if(o.dead&&o.deathT!=null&&o.deathT<1.2){const d_=o.deathT;flash=d_<.3?.7*(1-d_/.3):0;
     if(o.sheet==='enemy')idx=d_<.3?(o.dieHead?12:11):d_<.6?13:d_<.9?14:15;
     else if(d_<.85){idx=view==='back'?(st===1?1:0):13;fall=d_<.3?0:Math.min(1,(d_-.3)/.55)}
@@ -1066,6 +1066,11 @@ function drawUnit(c,x,gy,s,view,st,o){
   const ph=(o.walk||0)*.9,br=!o.dead&&!o.mv?Math.sin((o.t||0)*2.2)*.008*s:0,rec=o.aim&&o.rec?o.rec*.03*s:0;
   const dx=x-f[4]*k,dy=gy-f[3]*k+br+rec;
   c.save();if(o.alpha!=null)c.globalAlpha*=o.alpha;
+  if(o.hitT>0&&!o.dead&&!o.ghost){
+    /* knocked by the hit: snaps back and tilts, then recovers; lying down it jolts against the ground */
+    const p=1-Math.min(1,o.hitT/.55),e=Math.sin(p*Math.PI),sd=o.hitSide||1;
+    c.translate(x,gy);c.rotate(sd*e*(st===2?.05:.22));c.translate(-x+sd*e*(st===2?.04:.1)*s,-gy-(st===2?Math.abs(Math.sin(p*Math.PI*3))*.07*s:e*.03*s));
+  }
   if(o.aim&&view==='back'&&o.aimAt&&idx===3&&o.sheet==='player'){
     /* aim: legs stay planted, upper body + rifle turn toward the crosshair (mirrored when it is to the right) */
     const A=aimPose(x,gy,s,o.aimAt),hip=Math.round(f[3]*.58);
@@ -1101,7 +1106,7 @@ function drawUnit(c,x,gy,s,view,st,o){
     blit(f[0]+ax,f[1]+hip2,f[2]-ax,H,dx+ax*k-sR*.08*s+slide,dy+hip2*k-sR*.1*s,H*(1-sR*.32));
     blit(f[0],f[1],f[2],hip2+2,dx+slide,dy-Math.abs(Math.sin(p_))*.01*s);
   }else blit(f[0],f[1],f[2],f[3],dx,dy);
-  if(flash>0&&!o.ghost){c.globalCompositeOperation='lighter';c.globalAlpha=flash;c.drawImage(layers[0],f[0],f[1],f[2],f[3],dx,dy,f[2]*k,f[3]*k)}
+  if(flash>0&&!o.ghost){c.globalAlpha=flash;c.drawImage(sheetImg(o.sheet,HITF),f[0],f[1],f[2],f[3],dx,dy,f[2]*k,f[3]*k)}
   c.restore();
 }
 
