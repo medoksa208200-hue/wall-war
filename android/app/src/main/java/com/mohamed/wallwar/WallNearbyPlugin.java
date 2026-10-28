@@ -1,10 +1,20 @@
 package com.mohamed.wallwar;
 
 import android.Manifest;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothManager;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.location.LocationManager;
+import android.net.Uri;
+import android.provider.Settings;
+import androidx.core.content.ContextCompat;
+import androidx.core.location.LocationManagerCompat;
+import com.getcapacitor.JSArray;
 import android.os.Build;
 import androidx.annotation.NonNull;
 import com.getcapacitor.JSObject;
-import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
@@ -26,7 +36,9 @@ import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Two-phone play over Bluetooth / Wi-Fi Direct with Google Nearby Connections — no internet needed.
@@ -36,8 +48,11 @@ import java.util.List;
 @CapacitorPlugin(
     name = "WallNearby",
     permissions = {
-        @Permission(alias = "location", strings = { Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION }),
-        @Permission(alias = "bluetooth", strings = { Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_CONNECT }),
+        @Permission(alias = "coarse", strings = { Manifest.permission.ACCESS_COARSE_LOCATION }),
+        @Permission(alias = "fine", strings = { Manifest.permission.ACCESS_FINE_LOCATION }),
+        @Permission(alias = "scan", strings = { Manifest.permission.BLUETOOTH_SCAN }),
+        @Permission(alias = "adv", strings = { Manifest.permission.BLUETOOTH_ADVERTISE }),
+        @Permission(alias = "conn", strings = { Manifest.permission.BLUETOOTH_CONNECT }),
         @Permission(alias = "wifi", strings = { Manifest.permission.NEARBY_WIFI_DEVICES })
     }
 )
@@ -52,37 +67,73 @@ public class WallNearbyPlugin extends Plugin {
         client = Nearby.getConnectionsClient(getContext());
     }
 
-    private String[] neededAliases() {
-        List<String> a = new ArrayList<>();
-        a.add("location");
-        if (Build.VERSION.SDK_INT >= 31) a.add("bluetooth");
-        if (Build.VERSION.SDK_INT >= 33) a.add("wifi");
-        return a.toArray(new String[0]);
+    /** permission (by alias) this Android version needs for Nearby Connections, checked against the OS itself */
+    private Map<String, String> needed() {
+        Map<String, String> m = new LinkedHashMap<>();
+        m.put("coarse", Manifest.permission.ACCESS_COARSE_LOCATION);
+        m.put("fine", Manifest.permission.ACCESS_FINE_LOCATION);
+        if (Build.VERSION.SDK_INT >= 31) {
+            m.put("scan", Manifest.permission.BLUETOOTH_SCAN);
+            m.put("adv", Manifest.permission.BLUETOOTH_ADVERTISE);
+            m.put("conn", Manifest.permission.BLUETOOTH_CONNECT);
+        }
+        if (Build.VERSION.SDK_INT >= 33) m.put("wifi", Manifest.permission.NEARBY_WIFI_DEVICES);
+        return m;
     }
 
-    private boolean allGranted() {
-        for (String alias : neededAliases()) {
-            if (getPermissionState(alias) != PermissionState.GRANTED) return false;
+    private List<String> missingAliases() {
+        List<String> out = new ArrayList<>();
+        for (Map.Entry<String, String> e : needed().entrySet()) {
+            if (ContextCompat.checkSelfPermission(getContext(), e.getValue()) != PackageManager.PERMISSION_GRANTED) out.add(e.getKey());
         }
-        return true;
+        return out;
+    }
+
+    private JSObject status() {
+        JSObject r = new JSObject();
+        List<String> miss = missingAliases();
+        r.put("granted", miss.isEmpty());
+        r.put("missing", new JSArray(miss));
+        LocationManager lm = (LocationManager) getContext().getSystemService(Context.LOCATION_SERVICE);
+        r.put("locationOn", lm == null || LocationManagerCompat.isLocationEnabled(lm));
+        BluetoothManager bm = (BluetoothManager) getContext().getSystemService(Context.BLUETOOTH_SERVICE);
+        BluetoothAdapter ad = bm == null ? null : bm.getAdapter();
+        r.put("bluetoothOn", ad != null && ad.isEnabled());
+        return r;
     }
 
     @PluginMethod
     public void ensure(PluginCall call) {
-        if (allGranted()) {
-            JSObject r = new JSObject();
-            r.put("granted", true);
-            call.resolve(r);
+        List<String> miss = missingAliases();
+        if (miss.isEmpty()) {
+            call.resolve(status());
             return;
         }
-        requestPermissionForAliases(neededAliases(), call, "permsDone");
+        requestPermissionForAliases(miss.toArray(new String[0]), call, "permsDone");
     }
 
     @PermissionCallback
     private void permsDone(PluginCall call) {
-        JSObject r = new JSObject();
-        r.put("granted", allGranted());
-        call.resolve(r);
+        call.resolve(status());
+    }
+
+    @PluginMethod
+    public void openSettings(PluginCall call) {
+        try {
+            String what = call.getString("what", "app");
+            Intent i;
+            if ("location".equals(what)) i = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+            else if ("bluetooth".equals(what)) i = new Intent(Settings.ACTION_BLUETOOTH_SETTINGS);
+            else {
+                i = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                i.setData(Uri.fromParts("package", getContext().getPackageName(), null));
+            }
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(i);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(String.valueOf(e.getMessage()));
+        }
     }
 
     @PluginMethod

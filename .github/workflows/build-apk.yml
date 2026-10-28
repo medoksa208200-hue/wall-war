@@ -28,6 +28,7 @@ jobs:
           name: wall-war-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
       - name: Publish APK release
+        if: github.ref == 'refs/heads/main'
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
           cp android/app/build/outputs/apk/debug/app-debug.apk wall-war.apk

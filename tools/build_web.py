@@ -12,7 +12,7 @@ NATIVE in the loader is the Android-side version: bump it (and versionCode) only
 """
 import json, re, sys, pathlib
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-NATIVE = 3
+NATIVE = 4
 REPO_RAW = "https://raw.githubusercontent.com/medoksa208200-hue/wall-war/main/www/"
 APK = "https://github.com/medoksa208200-hue/wall-war/releases/download/latest/wall-war.apk"
 
