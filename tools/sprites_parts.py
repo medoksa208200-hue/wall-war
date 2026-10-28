@@ -1,51 +1,29 @@
-"""Split the player sheet into recolourable layers: helmet, boots, gun (pixels copied from the keyed sheet)."""
-import sys, json, numpy as np
+"""Colour-coded sheet → base sheet with default colours + gray shading layers for helmet (magenta), boots (cyan), rifle (yellow)."""
+import sys, numpy as np
 from PIL import Image
 from scipy import ndimage
 d = sys.argv[1]
-im = np.array(Image.open(f'{d}/player_keyed.png')).astype(int)
-boxes = json.load(open(f'{d}/player_boxes.json'))
-r, g, b, a = [im[..., i] for i in range(4)]
-v = np.maximum(np.maximum(r, g), b); mn = np.minimum(np.minimum(r, g), b)
-opaque = a > 160
-olive = opaque & (v >= 35) & (v <= 150) & (g >= b + 10) & (np.abs(r - g) <= 16)
-brown = opaque & (r > g + 18) & (g > b + 4) & (v >= 55) & (v <= 200)
-gray = opaque & ((v - mn) <= 14) & (v >= 36) & (v <= 160)
-H = np.zeros(a.shape, bool); B = np.zeros(a.shape, bool); G = np.zeros(a.shape, bool)
-NO_BOOTS = {2, 10, 15}
-HEAD = {0:(90,20),1:(111,18),2:(160,18),3:(105,20),4:(60,20),5:(62,20),6:(70,20),7:(103,52),8:(85,18),9:(69,20),10:(146,22),11:(83,18),12:(96,20),13:(103,25),14:(120,45),15:(70,15)}
-for i, (x0, y0, x1, y1) in enumerate(boxes):
-    h = y1 - y0
-    sl = (slice(y0, y1), slice(x0, x1))
-    zone = np.zeros((h, x1 - x0), bool); zone[:int(h * (.5 if i in (2, 10, 15) else .42))] = True
-    cx, cy = HEAD[i]
-    yy, xx = np.mgrid[0:h, 0:x1 - x0]
-    near = (xx - cx) ** 2 + (yy - cy) ** 2 < 46 ** 2
-    hm = (olive[sl] | gray[sl]) & near & ~brown[sl]
-    lab, n = ndimage.label(hm)
-    best, bestk = None, 0
-    for k in range(1, n + 1):
-        ys, xs = np.nonzero(lab == k)
-        if len(ys) < 40: continue
-        dist = np.hypot(xs.mean() - cx, ys.mean() - cy)
-        if best is None or dist < best: best, bestk = dist, k
-    if bestk:
-        hm = ndimage.binary_fill_holes(ndimage.binary_closing(lab == bestk, iterations=3)) & opaque[sl] & near
-        H[sl] |= hm
-    print('frame', i, 'helmet px', int(hm.sum()) if bestk else 0)
-    if i not in NO_BOOTS:
-        bz = np.zeros_like(zone); bz[int(h * .8):] = True
-        B[sl] |= brown[sl] & bz
-    if i == 3:
-        gz = np.zeros_like(zone); gz[:int(h * .42), :int((x1 - x0) * .3)] = True
-        G[sl] |= opaque[sl] & gz & ~H[sl] & ((v[sl] - mn[sl]) <= 22) & (v[sl] < 170)
-for name, m in (('helm', H), ('boot', B), ('gun', G)):
-    m = ndimage.binary_dilation(m, iterations=1) & opaque
-    out = np.zeros_like(im); out[m] = im[m]
-    Image.fromarray(out.astype(np.uint8), 'RGBA').save(f'{d}/player_{name}.png')
-    print(name, int(m.sum()))
-# visual check: paint the three layers in loud colours
-chk = im.copy()
-chk[H] = [255, 0, 255, 255]; chk[B] = [0, 160, 255, 255]; chk[G] = [255, 220, 0, 255]
-bg = Image.new('RGBA', (im.shape[1], im.shape[0]), (196, 149, 97, 255)); bg.alpha_composite(Image.fromarray(chk.astype(np.uint8), 'RGBA'))
-bg.convert('RGB').resize((im.shape[1] // 2, im.shape[0] // 2)).save(f'{d}/parts_check.jpg')
+im = np.array(Image.open(f'{d}/player_keyed.png')).astype(np.float32)
+rgb = im[..., :3] / 255; a = im[..., 3]
+mx = rgb.max(-1); mn = rgb.min(-1); S = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0); V = mx
+r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+hue = np.zeros_like(mx); dl = np.maximum(mx - mn, 1e-6)
+hue = np.where(mx == r, ((g - b) / dl) % 6, np.where(mx == g, (b - r) / dl + 2, (r - g) / dl + 4)) * 60
+op = a > 20
+def band(h0, h1, smin=.35, vmin=.12): return op & (hue >= h0) & (hue <= h1) & (S >= smin) & (V >= vmin)
+masks = {'helm': band(270, 340, .3), 'boot': band(160, 205, .3), 'gun': band(40, 76, .3)}
+# grow by one pixel into the dark anti-aliased outline so edges recolour too
+for k in masks: masks[k] = ndimage.binary_closing(masks[k], iterations=1) & op
+DEF = {'helm': (90, 102, 80), 'boot': (138, 90, 48), 'gun': (60, 60, 62)}
+base = im.copy()
+for k, m in masks.items():
+    shade = np.clip(V * .85 + (1 - S) * .5 * V, 0, 1)
+    gray = (shade * 255)
+    lay = np.zeros_like(im); lay[..., 0] = lay[..., 1] = lay[..., 2] = gray; lay[..., 3] = np.where(m, a, 0)
+    Image.fromarray(lay.astype(np.uint8), 'RGBA').save(f'{d}/player_{k}.png')
+    col = np.array(DEF[k], np.float32) / 255
+    for c in range(3): base[..., c] = np.where(m, np.clip(col[c] * shade / .85 * 255, 0, 255), base[..., c])
+    print(k, int(m.sum()))
+Image.fromarray(base.astype(np.uint8), 'RGBA').save(f'{d}/player_keyed.png')
+bg = Image.new('RGBA', (im.shape[1], im.shape[0]), (196, 149, 97, 255)); bg.alpha_composite(Image.fromarray(base.astype(np.uint8), 'RGBA'))
+bg.convert('RGB').resize((im.shape[1] // 2, im.shape[0] // 2)).save(f'{d}/base_check.jpg')

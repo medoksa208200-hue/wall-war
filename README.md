@@ -21,13 +21,15 @@ https://github.com/medoksa208200-hue/wall-war/releases/download/latest/wall-war.
 ## الكراكترات
 الصور الأصلية في `art/`. لتقطيعها من جديد:
 ```
-mkdir -p /tmp/wallwar-sprites && cp art/enemy-sheet.png /tmp/wallwar-sprites/enemy.png && cp art/player-sheet.png /tmp/wallwar-sprites/player.png
+mkdir -p /tmp/wallwar-sprites && cp art/enemy-sheet.png /tmp/wallwar-sprites/enemy.png && cp art/player-sheet-marked.png /tmp/wallwar-sprites/player.png
 python3 tools/sprites_cut.py /tmp/wallwar-sprites/enemy.png /tmp/wallwar-sprites
 python3 tools/sprites_cut.py /tmp/wallwar-sprites/player.png /tmp/wallwar-sprites
-python3 tools/sprites_parts.py /tmp/wallwar-sprites   # يفصل الخوذة والجزمة والسلاح للاسكنات
+cp /tmp/wallwar-sprites/player_keyed.png /tmp/wallwar-sprites/player_marked.png
+python3 tools/sprites_parts.py /tmp/wallwar-sprites   # الخوذة ماجنتا، الجزمة سيان، السلاح أصفر ← طبقات للاسكنات
 SPR_DIR=/tmp/wallwar-sprites python3 tools/sprites_pack.py   # يطلع sprites.js — حطه مكان سطر SPRITES في src/game.html
 ```
 كل شيت لازم يكون صفين × ٨ وضعيات بنفس الترتيب اللي في البرومت، على خلفية خضرا صافية.
+شيت اللاعب لازم الخوذة فيه ماجنتا والجزمة سيان والسلاح أصفر (علشان الاسكنات).
 
 ## البناء
 الـ APK بيتبني تلقائي على GitHub Actions مع كل push، وبيتنشر في Release اسمه `latest`.
