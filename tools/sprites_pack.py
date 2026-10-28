@@ -19,7 +19,7 @@ for name in ['enemy', 'player']:
         ax = float(xs.mean()) if len(xs) else w / 2
         frames.append([x0, y0, x1 - x0, y1 - y0, round(ax, 1)])
     # trim: crop the sheet to used area, scale to 85% to keep the page small
-    k = .85 if name == 'enemy' else 1.0
+    k = 1.0
     sm = im.resize((round(im.width * k), round(im.height * k)), Image.LANCZOS)
     frames = [[round(v * k, 1) for v in f] for f in frames]
     buf = io.BytesIO(); sm.save(buf, 'WEBP', quality=88, method=6)
