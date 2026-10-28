@@ -29,6 +29,7 @@ python3 tools/sprites_parts.py /tmp/wallwar-sprites   # الخوذة ماجنت�
 SPR_DIR=/tmp/wallwar-sprites python3 tools/sprites_pack.py   # يطلع sprites.js — حطه مكان سطر SPRITES في src/game.html
 ```
 كل شيت لازم يكون صفين × ٨ وضعيات بنفس الترتيب اللي في البرومت، على خلفية خضرا صافية.
+شيت المشي (`art/player-walk-marked.png`، ٤ صفوف × ٦): يتقطّع بنفس الطريقة (4 صفوف) وبعدين `python3 tools/sprites_walk_pack.py <dir>` يطلع walk.js — حطه مكان سطر WALKSHEET في src/game.html.
 شيت اللاعب لازم الخوذة فيه ماجنتا والجزمة سيان والسلاح أصفر (علشان الاسكنات).
 
 ## البناء
