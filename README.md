@@ -24,6 +24,7 @@ https://github.com/medoksa208200-hue/wall-war/releases/download/latest/wall-war.
 mkdir -p /tmp/wallwar-sprites && cp art/enemy-sheet.png /tmp/wallwar-sprites/enemy.png && cp art/player-sheet.png /tmp/wallwar-sprites/player.png
 python3 tools/sprites_cut.py /tmp/wallwar-sprites/enemy.png /tmp/wallwar-sprites
 python3 tools/sprites_cut.py /tmp/wallwar-sprites/player.png /tmp/wallwar-sprites
+python3 tools/sprites_parts.py /tmp/wallwar-sprites   # يفصل الخوذة والجزمة والسلاح للاسكنات
 SPR_DIR=/tmp/wallwar-sprites python3 tools/sprites_pack.py   # يطلع sprites.js — حطه مكان سطر SPRITES في src/game.html
 ```
 كل شيت لازم يكون صفين × ٨ وضعيات بنفس الترتيب اللي في البرومت، على خلفية خضرا صافية.

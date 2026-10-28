@@ -26,5 +26,13 @@ for name in ['enemy', 'player']:
     data = base64.b64encode(buf.getvalue()).decode()
     stand_h = frames[0][3]
     out[name] = {'src': 'data:image/webp;base64,' + data, 'f': frames, 'ppm': round(stand_h / 1.78, 2)}
+    if name == 'player':
+        parts = {}
+        for part in ('helm', 'boot', 'gun'):
+            pim = Image.open(f'{d}/player_{part}.png').resize(sm.size, Image.LANCZOS)
+            b2 = io.BytesIO(); pim.save(b2, 'WEBP', quality=85, method=6)
+            parts[part] = 'data:image/webp;base64,' + base64.b64encode(b2.getvalue()).decode()
+            print('  part', part, len(b2.getvalue()) // 1024, 'KB')
+        out[name]['parts'] = parts
     print(name, 'webp KB', len(buf.getvalue()) // 1024, 'ppm', out[name]['ppm'])
 open(f'{d}/sprites.js', 'w').write('const SPRITES=' + json.dumps(out, separators=(',', ':')) + ';\n')
