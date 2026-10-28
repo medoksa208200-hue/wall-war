@@ -213,7 +213,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 </script>
 <script>
 /* WALLWAR_GAME */
-const VERSION=7;
+const VERSION=8;
 /* =================== world constants =================== */
 const W=960,H=540;
 const EG=262,EPX=60,EX0=150;                 // enemy plane: ground y, px per metre, x origin
@@ -503,10 +503,10 @@ function fx(e){
     const mine=e.s==='me';
     if(mine){
       const sx=ex(e.ix),sy=ey(e.iy);sfx.shot();g.me.rec=1;
-      const gx=mx(g.me.x)-.6*MSC,gy=MG-1.46*MSC;
+      const AP=aimPose(mx(g.me.x),MG,MSC,g.lastAim||{x:sx,y:sy}),gx=AP?AP.tip.x:mx(g.me.x)-.6*MSC,gy=AP?AP.tip.y:MG-1.46*MSC;
       flash(gx,gy,1.6);g.tracers.push({x1:gx,y1:gy,x2:sx,y2:sy,life:.14,c:(g.me.sk&&g.me.sk.tr)||'255,226,150'});g.shake=.18;
       if(g.md.night)g.lights.push({x:mx(g.me.x),y:MG-200,r:300,life:.5,max:.5});
-      for(let i=0;i<(LOW()?1:2);i++)g.parts.push({k:'shell',x:gx+80,y:gy+20,vx:rnd(120,200),vy:rnd(-220,-140),g:900,life:.9,max:.9,a:0,va:rnd(10,20)});
+      for(let i=0;i<(LOW()?1:2);i++)g.parts.push({k:'shell',x:AP?AP.P.x:gx+80,y:AP?AP.P.y:gy+20,vx:rnd(120,200)*(AP&&AP.flip?-1:1),vy:rnd(-220,-140),g:900,life:.9,max:.9,a:0,va:rnd(10,20)});
       smoke(gx,gy,3);
       if(e.d>0){
         if(e.r<0){say('الدرع صد الطلقة!','#4cc3a6');burst(sx,sy,'#4cc3a6',14)}
@@ -515,7 +515,7 @@ function fx(e){
         if(e.wall){burst(sx,sy,'#9e5b36',10);chunks(sx,sy,'#9e5b36',e.chip?8:3);sfx.wall()}else if(e.iy<0)burst(sx,sy,'#c39561',10);
         say(e.near?'قريبة! بس فلتت':'فلتت','#e9d3b0');
       }
-      const f=g.foes[e.ui];if(f&&e.d>0)f.hitT=.4;
+      const f=g.foes[e.ui];if(f&&e.d>0)f.hitT=.4;if(f&&e.kill){f.deathT=0;f.dieHead=e.d>=2;f.hitT=0}
     }else{
       sfx.far();const me=g.me,f=g.foes[e.i]||g.foes[0],k=f&&f.boss?1.18:1;
       const gx=ex(f?f.x:5.5),gy=ey(1.45*k);
@@ -523,7 +523,7 @@ function fx(e){
       let hx=mx(e.ix),hy=MWB-e.iy*MWS;
       if(e.d>0){hy=MG-e.iy*MSC;hx=mx(me.x)+(e.ix-me.x)*MSC*.9;me.hitT=.5;
         if(e.r<0){say('الدرع صد الطلقة!','#4cc3a6');burst(hx,hy,'#4cc3a6',16)}
-        else{sfx.hit();g.red=1;g.shake=.5;say(e.kill?'اتقتلت!':(e.d>=2?'اتصبت في راسك! −٢':'اتصبت! −١'),'#e2483a');burst(hx,hy,'#b3221a',26);vib(e.d>=2?[90,50,140]:90)}}
+        else{sfx.hit();g.red=1;g.shake=.5;if(e.kill){me.deathT=0;me.hitT=0}say(e.kill?'اتقتلت!':(e.d>=2?'اتصبت في راسك! −٢':'اتصبت! −١'),'#e2483a');burst(hx,hy,'#b3221a',26);vib(e.d>=2?[90,50,140]:90)}}
       else{if(e.wall){burst(hx,hy,'#9e5b36',14);chunks(hx,hy,'#9e5b36',e.chip?10:4);sfx.wall()}g.shake=.15;say(e.near?'عدّت جنبك!':'فلتت منه','#e9d3b0')}
       g.tracers.push({x1:gx,y1:gy,x2:hx,y2:hy,life:.12});
       me.dir=0;
@@ -545,8 +545,8 @@ function fx(e){
       if(e.on==='me')g.decals.push({x:bx,y:MG-6,r:rnd(70,95)})});
     g.shake=e.on==='me'?.8:.4;if(e.on==='me')g.red=Math.max(g.red,.6);
     for(const h of e.hits||[]){
-      if(h.who==='me'){if(h.r<0)say('الدرع حماك!','#4cc3a6');else{say(h.kill?'اتقتلت!':'اتصبت من القنبلة! −'+AR(h.dm),'#e2483a');g.red=1}}
-      else{const f=g.foes[h.i];const fx0=f?ex(f.x):bx;if(h.r<0)float(fx0,ey(1.6),'درع','#4cc3a6');else{float(fx0,ey(1.7),h.kill?'قتل':'−'+AR(h.dm),'#ff6b5a');if(f)f.hitT=.5}}
+      if(h.who==='me'){if(h.kill)g.me.deathT=0;if(h.r<0)say('الدرع حماك!','#4cc3a6');else{say(h.kill?'اتقتلت!':'اتصبت من القنبلة! −'+AR(h.dm),'#e2483a');g.red=1}}
+      else{const f=g.foes[h.i];if(f&&h.kill){f.deathT=0;f.dieHead=false}const fx0=f?ex(f.x):bx;if(h.r<0)float(fx0,ey(1.6),'درع','#4cc3a6');else{float(fx0,ey(1.7),h.kill?'قتل':'−'+AR(h.dm),'#ff6b5a');if(f)f.hitT=.5}}
     }
     if(!(e.hits||[]).length)say(e.on==='me'?'نجيت من القنبلة!':'القنبلة ما جابتش حد','#e9d3b0');
     else if(e.on==='foe'&&e.hits.some(h=>h.r>0))say(e.hits.some(h=>h.kill)?'القنبلة قتلته!':'القنبلة جابته!','#4cc3a6');
@@ -554,7 +554,7 @@ function fx(e){
   }
   else if(e.k==='round'){const w=e.winner;g.score=e.score||g.score;say(w?(w==='me'?'الجولة ليك!':'الجولة ليه'):'الجولة تعادل',w==='me'?'#4cc3a6':w?'#e2483a':'#f2b53c',2.2)}
   else if(e.k==='wave'){say('الموجة '+AR(e.n)+' جاية!','#f2b53c',2.4);sfx.coin()}
-  else if(e.k==='newround'){say('الجولة '+AR(e.n),'#ffe9c7',1.4);g.holesE=[];g.holesM=[];g.decals=[];g.reveal=null}
+  else if(e.k==='newround'){say('الجولة '+AR(e.n),'#ffe9c7',1.4);g.me.deathT=null;g.foes.forEach(f=>f.deathT=null);g.holesE=[];g.holesM=[];g.decals=[];g.reveal=null}
   else if(e.k==='over'){
     say(e.winner==='me'?'كسبت!':'خسرت',e.winner==='me'?'#4cc3a6':'#e2483a',3);uiKey='';ui();
     const g0=g;setTimeout(()=>{if(G===g0)showOver(e.winner,null,e.reason)},1600);
@@ -622,7 +622,7 @@ function checkEnd(){
 function finish(w,reason){const g=G;if(g.phase==='over')return;g.winner=w;g.phase='over';emit({k:'over',winner:w,reason});if(MODE==='host')sendSnap()}
 function resetRound(){
   const g=G,md=g.md;g.round++;g.rs++;g.phase='intro';
-  for(const [u,x] of [[g.me,2.5],[g.foes[0],8.5]])Object.assign(u,{hp:md.hp,ammo:md.ammo,nades:md.nades,x,tx:x,st:1,dead:false,shield:false,dbl:false});
+  for(const [u,x] of [[g.me,2.5],[g.foes[0],8.5]])Object.assign(u,{hp:md.hp,ammo:md.ammo,nades:md.nades,x,tx:x,st:1,dead:false,shield:false,dbl:false,deathT:null});
   g.wallE.fill(WALL);g.wallM.fill(WALL);g.holesE=[];g.holesM=[];g.crates=[];g.reveal=null;g.lastSeen=null;
   emit({k:'newround',n:g.round});startTurn(g.roundStarter);
 }
@@ -746,7 +746,7 @@ function remoteHide(dt){
 }
 function meMove(dt,collect){
   const g=G,me=g.me,d=me.dir;me.moving=!!d;
-  if(d){const sp=d*ST[me.st].sp*(me.ana||1)*dt,ox=me.x;me.x=clamp(me.x+sp,XMIN,XMAX);me.walk+=Math.abs(me.x-ox)*7;
+  if(d){me.lastDir=d;const sp=d*ST[me.st].sp*(me.ana||1)*dt,ox=me.x;me.x=clamp(me.x+sp,XMIN,XMAX);me.walk+=Math.abs(me.x-ox)*7;
     if(me.st<2&&Math.random()<dt*14*(LOW()?.5:1)&&!g.md.night)g.parts.push({x:mx(me.x)+rnd(-20,20),y:MG-4,vx:rnd(-20,20),vy:rnd(-40,-15),g:0,life:.7,max:.7,c:'rgba(214,180,128,.6)',r:rnd(5,10)});
     if(me.st<2&&Math.random()<dt*4){const env=g.md.night?.15:g.md.wind?.5:1;if(Math.random()<DIFF[g.diff].seeP*env)g.lastSeen={x:me.x,st:me.st,vx:d*ST[me.st].sp,t:g.t}}}
   if(canSeeMe()&&Math.random()<dt*6*(g.md.night?.3:1))g.lastSeen={x:me.x,st:me.st,vx:d*ST[me.st].sp,t:g.t};
@@ -765,7 +765,7 @@ function update(rdt){
   g.floats=g.floats.filter(f=>(f.life-=dt)>0&&(f.y-=40*dt,true));
   g.booms=g.booms.filter(b=>(b.t+=dt)<1.2);
   g.shake=Math.max(0,g.shake-dt);g.red=Math.max(0,g.red-dt*1.4);
-  for(const u of [g.me,...g.foes]){u.rec=Math.max(0,u.rec-dt*5);u.hitT=Math.max(0,u.hitT-dt);u.throwT=Math.max(0,u.throwT-dt)}
+  for(const u of [g.me,...g.foes]){if(u.deathT!=null)u.deathT+=dt;u.rec=Math.max(0,u.rec-dt*5);u.hitT=Math.max(0,u.hitT-dt);u.throwT=Math.max(0,u.throwT-dt)}
   if(g.msg&&(g.msg.life-=dt)<=0)g.msg=null;
   if(g.reveal&&(g.reveal.life-=dt)<=0)g.reveal=null;
   for(const c of g.crates)if(!c.landed){c.fall+=dt/2.3;if(c.fall>=1){c.fall=1;c.landed=true}}
@@ -1030,6 +1030,14 @@ function poseIdx(key,view,st,o){
   if(key==='enemy'){if(o.throwT>0)return 7;if(o.aim)return 3;if(o.hitT>0)return st===0?12:11;if(st===2)return 2;if(st===1)return o.mv?8:1;if(o.mv)return WALK[Math.floor(o.walk*.45)%4];return 0}
   if(o.throwT>0)return 14;if(o.aim)return 11;if(o.hitT>0)return 13;if(st===2)return 10;if(st===1)return o.mv?12:9;return 8;
 }
+/* aiming geometry for your soldier (back view): pivot at the chest, rifle tip measured on the aiming frame */
+function aimPose(x,gy,s,aimAt){
+  const S=SHEETS.player;if(!S)return null;const f=S.f[3],k=s/S.ppm,sh=f[3]*.56,P={x,y:gy-(f[3]-sh)*k};
+  const flip=aimAt.x>x;let a=Math.atan2(aimAt.y-(gy-f[3]*.7*k),Math.max(Math.abs(aimAt.x-x),60))*.55;a=clamp(a,-.38,.22);
+  const vx=(f[2]*.01-f[4])*k,vy=(f[3]*.212-sh)*k,r=-a,tx=vx*Math.cos(r)-vy*Math.sin(r),ty=vx*Math.sin(r)+vy*Math.cos(r);
+  return{f,k,sh,P,flip,a,tip:{x:P.x+(A_flip(flip)*tx),y:P.y+ty}};
+}
+const A_flip=fl=>fl?-1:1;
 /* real side-step walk frames from the walk sheet (player art only); moving left plays the cycle backwards */
 function drawWalk(c,x,gy,s,view,st,o){
   const S=SHEETS.walk,sk=o.ghost?null:o.sk,base=(view==='back'?0:12)+(st?6:0);
@@ -1046,6 +1054,11 @@ function drawUnit(c,x,gy,s,view,st,o){
   const sk=o.sheet==='player'&&!o.ghost?o.sk:null;
   const walking=o.mv&&!o.dead&&!o.aim&&!(o.throwT>0)&&!(o.hitT>0);c.imageSmoothingQuality='high';
   let idx=poseIdx(o.sheet,view,st,o);if(walking&&st===0)idx=view==='back'?0:o.sheet==='enemy'?0:8;
+  let fall=0,flash=o.hitT>0?Math.min(.7,o.hitT*1.4):0;
+  if(o.dead&&o.deathT!=null&&o.deathT<1.2){const d_=o.deathT;flash=d_<.3?.7*(1-d_/.3):0;
+    if(o.sheet==='enemy')idx=d_<.3?(o.dieHead?12:11):d_<.6?13:d_<.9?14:15;
+    else if(d_<.85){idx=view==='back'?(st===1?1:0):13;fall=d_<.3?0:Math.min(1,(d_-.3)/.55)}
+    else idx=15}
   const f=S.f[idx],k=s/S.ppm;
   const layers=[sheetImg(o.sheet,o.ghost?GHOSTF:(sk?sk.suit:o.filter)||'')];
   if(sk){const h=partImg('helm',sk.helm,'player'),b=partImg('boot',sk.boot,'player'),gn=partImg('gun',sk.gun,'player');if(h)layers.push(h);if(b)layers.push(b);if(gn)layers.push(gn)}
@@ -1053,6 +1066,19 @@ function drawUnit(c,x,gy,s,view,st,o){
   const ph=(o.walk||0)*.9,br=!o.dead&&!o.mv?Math.sin((o.t||0)*2.2)*.008*s:0,rec=o.aim&&o.rec?o.rec*.03*s:0;
   const dx=x-f[4]*k,dy=gy-f[3]*k+br+rec;
   c.save();if(o.alpha!=null)c.globalAlpha*=o.alpha;
+  if(o.aim&&view==='back'&&o.aimAt&&idx===3&&o.sheet==='player'){
+    /* aim: legs stay planted, upper body + rifle turn toward the crosshair (mirrored when it is to the right) */
+    const A=aimPose(x,gy,s,o.aimAt),hip=Math.round(f[3]*.58);
+    c.translate(x,0);if(A.flip)c.scale(-1,1);
+    blit(f[0],f[1]+hip,f[2],f[3]-hip,-f[4]*k,gy-(f[3]-hip)*k);
+    const fb=Math.round(f[3]*.14);blit(f[0],f[1]+hip-fb,f[2],fb+2,-f[4]*k,gy-(f[3]-hip+fb)*k);
+    c.translate(0,A.P.y);c.rotate(-A.a);c.translate((o.rec||0)*.05*s,0);
+    blit(f[0],f[1],f[2],hip+3,-f[4]*k,-A.sh*k);
+    c.restore();return;
+  }
+  if(fall>0){
+    c.translate(x,gy);c.rotate(fall*1.45*(o.dir<0?-1:1));blit(f[0],f[1],f[2],f[3],-f[4]*k,-f[3]*k);c.restore();return;
+  }
   if(walking&&st<2){
     /* side-step walk: one foot lifts (knee bends, foot rises) and steps toward the movement while the other stays planted */
     const crouch=st===1,hip=Math.round(f[3]*(crouch?.6:.55)),ax=f[4],H=f[3]-hip,d=o.dir<0?-1:1,TAU=Math.PI*2;
@@ -1069,9 +1095,13 @@ function drawUnit(c,x,gy,s,view,st,o){
       blit(f[0],f[1],f[2],hip+2,dx+d*sh*A*.15,dy-b2);
     }else{leg(0,ax,left,-1);leg(ax,f[2]-ax,right,1);blit(f[0],f[1],f[2],hip+3,dx+sway,top)}
   }else if(walking&&st===2){
-    const sw=Math.sin((o.walk||0)*2.2);c.save();c.translate(x,gy);c.rotate(sw*.025);c.translate(sw*.05*s,-Math.abs(sw)*.015*s);blit(f[0],f[1],f[2],f[3],-f[4]*k,-f[3]*k);c.restore();
+    /* crawl: knees (or elbows, seen from the front) pull up one side at a time while the body slides */
+    const hip2=Math.round(f[3]*.52),ax=f[4],H=f[3]-hip2,p_=(o.walk||0)*2.6,sL=Math.max(0,Math.sin(p_)),sR=Math.max(0,-Math.sin(p_)),slide=Math.sin(p_)*.03*s;
+    blit(f[0],f[1]+hip2,ax,H,dx+sL*.08*s+slide,dy+hip2*k-sL*.1*s,H*(1-sL*.32));
+    blit(f[0]+ax,f[1]+hip2,f[2]-ax,H,dx+ax*k-sR*.08*s+slide,dy+hip2*k-sR*.1*s,H*(1-sR*.32));
+    blit(f[0],f[1],f[2],hip2+2,dx+slide,dy-Math.abs(Math.sin(p_))*.01*s);
   }else blit(f[0],f[1],f[2],f[3],dx,dy);
-  if(o.hitT>0&&!o.ghost){c.globalCompositeOperation='lighter';c.globalAlpha=Math.min(.7,o.hitT*1.4);c.drawImage(layers[0],f[0],f[1],f[2],f[3],dx,dy,f[2]*k,f[3]*k)}
+  if(flash>0&&!o.ghost){c.globalCompositeOperation='lighter';c.globalAlpha=flash;c.drawImage(layers[0],f[0],f[1],f[2],f[3],dx,dy,f[2]*k,f[3]*k)}
   c.restore();
 }
 
@@ -1150,13 +1180,14 @@ function draw(dt){
   // enemy side
   g.foes.forEach((f,i)=>{
     const shooting=foeTurn&&i===g.shooter&&!f.dead,k=f.boss?1.18:1,jit=f.hitT>0?rnd(-2,2):0;
-    drawUnit(c,ex(f.x)+jit,EG,EPX*k,'front',shooting?0:f.st,{sheet:foeSheet(),dir:Math.sign(f.tx-f.x)||1,filter:f.F,sk:f.sk,P:f.P,t:t+i,mv:f.moving&&!shooting,walk:f.walk,aim:shooting,boss:f.boss,dead:f.dead,rec:f.rec,hitT:f.hitT,throwT:f.throwT});
+    drawUnit(c,ex(f.x)+jit,EG,EPX*k,'front',shooting?0:f.st,{sheet:foeSheet(),dir:Math.sign(f.tx-f.x)||1,deathT:f.deathT,dieHead:f.dieHead,filter:f.F,sk:f.sk,P:f.P,t:t+i,mv:f.moving&&!shooting,walk:f.walk,aim:shooting,boss:f.boss,dead:f.dead,rec:f.rec,hitT:f.hitT,throwT:f.throwT});
     if(shooting&&g.phase==='aim'&&Math.sin(t*14)>.2){c.fillStyle='rgba(255,80,60,.95)';circ(c,ex(f.x),ey(1.45*k),3.2);c.fillStyle='rgba(255,80,60,.25)';circ(c,ex(f.x),ey(1.45*k),9)}
     if(f.shield&&!f.dead&&(shooting||g.phase==='over')){c.strokeStyle='rgba(76,195,166,.55)';c.lineWidth=2;c.beginPath();c.ellipse(ex(f.x),EG-.9*EPX*k,.45*EPX*k,1*EPX*k,0,0,7);c.stroke()}
   });
   for(const cr of g.crates)if(cr.side==='foe')drawCrate(cr);
   drawWall(ewC,g.wallE,ex,h=>ey(h));
   for(const h of g.holesE)if(h.y<=g.wallE[colOf(h.x)]){const x=ex(h.x),y=ey(h.y);c.fillStyle='#1d120c';circ(c,x,y,h.r);c.fillStyle='rgba(255,220,170,.25)';circ(c,x+.8,y+.8,h.r*.5)}
+  for(const f of g.foes)if(f.dead&&(f.deathT==null||f.deathT>1.1))drawUnit(c,ex(f.x),EG,EPX*(f.boss?1.18:1),'front',2,{sheet:foeSheet(),ghost:true,dead:true,alpha:.28+.08*Math.sin(t*3)});
   if(g.reveal&&g.reveal.who==='foe'&&!foeTurn){const a=Math.min(1,g.reveal.life*1.2)*(.65+.35*Math.sin(t*20));
     for(const u of g.reveal.units){const k=u.boss?1.18:1;drawUnit(c,ex(u.x),EG,EPX*k,'front',u.st,{sheet:foeSheet(),ghost:true,alpha:a,P:ENEMY_PALS[0]});
       c.strokeStyle=`rgba(226,72,58,${a})`;c.lineWidth=2;c.setLineDash([4,4]);const s=ST[u.st];c.strokeRect(ex(u.x)-s.hw*k*EPX,EG-s.top*k*EPX,s.hw*2*k*EPX,s.top*k*EPX);c.setLineDash([])}}
@@ -1174,7 +1205,8 @@ function draw(dt){
   for(const cr of g.crates)if(cr.side==='me')drawCrate(cr);
   const me=g.me,meAim=g.side==='me'&&(g.phase==='aim'||g.phase==='after'||g.phase==='nade'&&n&&n.on==='foe');
   {const sw=(meAim?0:me.st)===2?.9:.42;c.fillStyle='rgba(20,12,6,.32)';c.beginPath();c.ellipse(mx(me.x),MG-3,sw*MSC,.07*MSC,0,0,7);c.fill()}
-  drawUnit(c,mx(me.x)+(me.hitT>0?rnd(-3,3):0),MG,MSC,'back',meAim?0:me.st,{sheet:'player',dir:me.dir,sk:me.sk,P:me.P,t,mv:me.moving&&!meAim,walk:me.walk,aim:meAim,rec:me.rec,dead:me.dead,hitT:me.hitT,throwT:me.throwT});
+  if(meAim&&g.side==='me'&&g.phase==='aim'){const sw_=sway();g.lastAim={x:g.cross.x+sw_.x,y:g.cross.y+sw_.y}}
+  drawUnit(c,mx(me.x)+(me.hitT>0?rnd(-3,3):0),MG,MSC,'back',meAim?0:me.st,{sheet:'player',dir:me.dir||me.lastDir,sk:me.sk,aimAt:meAim?g.lastAim:null,deathT:me.deathT,P:me.P,t,mv:me.moving&&!meAim,walk:me.walk,aim:meAim,rec:me.rec,dead:me.dead,hitT:me.hitT,throwT:me.throwT});
   if(me.shield&&!me.dead){const st=meAim?0:me.st;c.strokeStyle='rgba(76,195,166,.5)';c.lineWidth=3;c.beginPath();c.ellipse(mx(me.x),MG-ST[st].top*MSC*.5,.55*MSC,ST[st].top*MSC*.58,0,0,7);c.stroke()}
   // grenade in flight / on the ground
   if(n&&n.kind==='a'){const p=n.t/n.fl,dir=n.on==='foe'?1:-1,px=dir>0?-120+(W+240)*p:W+120-(W+240)*p,py=n.on==='foe'?70:120;

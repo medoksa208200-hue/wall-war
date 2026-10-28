@@ -10,7 +10,7 @@ b{font-size:34px;color:#f2b53c}i{width:26px;height:26px;border:3px solid #3a2a1e
 /* Auto-update loader: runs the newest game it can get. Online → checks GitHub for a newer game and keeps it;
    offline → runs the last downloaded game (or the one inside the APK). */
 (async function(){
-  var NATIVE=4, BUNDLED=7, BASE='https://raw.githubusercontent.com/medoksa208200-hue/wall-war/main/www/';
+  var NATIVE=4, BUNDLED=8, BASE='https://raw.githubusercontent.com/medoksa208200-hue/wall-war/main/www/';
   function get(k){try{return localStorage.getItem(k)}catch(e){return null}}
   function put(k,v){try{localStorage.setItem(k,v);return true}catch(e){return false}}
   function tf(u,ms){var c=new AbortController(),t=setTimeout(function(){c.abort()},ms);return fetch(u,{signal:c.signal,cache:'no-store'}).finally(function(){clearTimeout(t)})}
