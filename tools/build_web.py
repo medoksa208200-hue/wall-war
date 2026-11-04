@@ -12,7 +12,7 @@ NATIVE in the loader is the Android-side version: bump it (and versionCode) only
 """
 import json, re, sys, pathlib
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-NATIVE = 4
+NATIVE = 5
 REPO_RAW = "https://raw.githubusercontent.com/medoksa208200-hue/wall-war/main/www/"
 APK = "https://github.com/medoksa208200-hue/wall-war/releases/download/latest/wall-war.apk"
 
@@ -39,25 +39,21 @@ b{font-size:34px;color:#f2b53c}i{width:26px;height:26px;border:3px solid #3a2a1e
 @keyframes s{to{transform:rotate(360deg)}}</style></head>
 <body><b>حرب السور</b><i></i>
 <script>
-/* Auto-update loader: runs the newest game it can get. Online → checks GitHub for a newer game and keeps it;
-   offline → runs the last downloaded game (or the one inside the APK). */
+/* Loader: starts instantly with the newest COMPLETE game it has (IndexedDB, then localStorage, then the one inside the APK).
+   The real version is read from inside each copy, so a half-saved update can never be mistaken for a new one.
+   The game itself downloads updates in the background and offers a restart. */
 (async function(){
-  var NATIVE=__NATIVE__, BUNDLED=__VER__, BASE='__BASE__';
-  function get(k){try{return localStorage.getItem(k)}catch(e){return null}}
-  function put(k,v){try{localStorage.setItem(k,v);return true}catch(e){return false}}
-  function tf(u,ms){var c=new AbortController(),t=setTimeout(function(){c.abort()},ms);return fetch(u,{signal:c.signal,cache:'no-store'}).finally(function(){clearTimeout(t)})}
-  var html=null,ver=BUNDLED,cv=+get('wg_v')||0,force=get('wg_force')==='1';
-  if(force)try{localStorage.removeItem('wg_force')}catch(e){}
-  if(cv>BUNDLED){html=get('wg_html');if(html)ver=cv}
-  var info=null;
-  try{info=await (await tf(BASE+'version.json?t='+Date.now(),force?6000:2500)).json();put('wg_info',JSON.stringify(info))}catch(e){try{info=JSON.parse(get('wg_info'))}catch(_){}}
-  if(info&&info.v>ver&&(info.minNative||0)<=NATIVE){
-    try{var h=await (await tf(BASE+'game.html?v='+info.v,8000)).text();
-      if(h.indexOf('WALLWAR_GAME')>0){html=h;ver=info.v;put('wg_html',h);put('wg_v',String(info.v))}}catch(e){}
-  }
-  if(!html){html=await (await fetch('game.html')).text();ver=BUNDLED}
-  window.WALL={native:NATIVE,ver:ver,apkNeeded:!!(info&&(info.minNative||0)>NATIVE),apk:info&&info.apk,notes:info&&info.notes};
-  document.open();document.write(html);document.close();
+  var NATIVE=__NATIVE__, BUNDLED=__VER__;
+  function verOf(h){if(!h||h.indexOf('WALLWAR_GAME')<0)return 0;var m=/const VERSION=(\\d+);/.exec(h);return m?+m[1]:0}
+  function idbGet(){return new Promise(function(res){try{var rq=indexedDB.open('wallwar',1);rq.onupgradeneeded=function(){rq.result.createObjectStore('kv')};
+    rq.onsuccess=function(){try{var g=rq.result.transaction('kv').objectStore('kv').get('game');g.onsuccess=function(){res(g.result||null)};g.onerror=function(){res(null)}}catch(e){res(null)}};rq.onerror=function(){res(null)}}catch(e){res(null)}});}
+  var best=null,bv=0;
+  var rec=await Promise.race([idbGet(),new Promise(function(r){setTimeout(function(){r(null)},1500)})]);
+  if(rec&&rec.html){var v=verOf(rec.html);if(v>bv){bv=v;best=rec.html}}
+  try{var ls=localStorage.getItem('wg_html'),lv=verOf(ls);if(lv>bv){bv=lv;best=ls}}catch(e){}
+  if(bv<=BUNDLED){best=await (await fetch('game.html')).text();bv=BUNDLED}
+  window.WALL={native:NATIVE,ver:bv,apkNeeded:false};
+  document.open();document.write(best);document.close();
 })();
 </script></body></html>"""
 loader = loader.replace("__NATIVE__", str(NATIVE)).replace("__VER__", str(ver)).replace("__BASE__", REPO_RAW)
