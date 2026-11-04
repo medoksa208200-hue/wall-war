@@ -11,7 +11,7 @@ b{font-size:34px;color:#f2b53c}i{width:26px;height:26px;border:3px solid #3a2a1e
    The real version is read from inside each copy, so a half-saved update can never be mistaken for a new one.
    The game itself downloads updates in the background and offers a restart. */
 (async function(){
-  var NATIVE=5, BUNDLED=12;
+  var NATIVE=5, BUNDLED=13;
   function verOf(h){if(!h||h.indexOf('WALLWAR_GAME')<0)return 0;var m=/const VERSION=(\d+);/.exec(h);return m?+m[1]:0}
   function idbGet(){return new Promise(function(res){try{var rq=indexedDB.open('wallwar',1);rq.onupgradeneeded=function(){rq.result.createObjectStore('kv')};
     rq.onsuccess=function(){try{var g=rq.result.transaction('kv').objectStore('kv').get('game');g.onsuccess=function(){res(g.result||null)};g.onerror=function(){res(null)}}catch(e){res(null)}};rq.onerror=function(){res(null)}}catch(e){res(null)}});}
